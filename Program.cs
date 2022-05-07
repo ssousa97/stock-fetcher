@@ -1,7 +1,9 @@
-﻿using System.Globalization;
+﻿using System.Configuration;
+using System.Globalization;
 
 class Program {
-    static void Main(string[] args){
+    static void Main(string[] args)
+    {
 
         try {
 
@@ -20,7 +22,11 @@ class Program {
             if(buyPrice > sellPrice){
                 throw new Exception("Valor de compra maior do que valor de venda.");
             }
-            
+
+            var configs = ConfigurationManager.AppSettings;
+            Console.WriteLine(configs["Key"]);
+            var stockFetcher = new StockFetcher(stock, sellPrice, buyPrice);
+
         } catch(Exception e){
             Console.Error.WriteLine(e.Message);
         } 
