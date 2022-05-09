@@ -2,9 +2,9 @@
 using System.Globalization;
 
 class Program {
-    static void Main(string[] args)
-    {
+    static async Task Main(string[] args){
 
+        
         try {
 
             if(args.Length < 3){
@@ -24,8 +24,12 @@ class Program {
             }
 
             var configs = ConfigurationManager.AppSettings;
-            Console.WriteLine(configs["Key"]);
             var stockFetcher = new StockFetcher(stock, sellPrice, buyPrice);
+            
+
+            Console.WriteLine("[Stock Fetcher] - Fetching...");
+
+            await stockFetcher.Run();
 
         } catch(Exception e){
             Console.Error.WriteLine(e.Message);
