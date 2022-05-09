@@ -1,5 +1,5 @@
 interface IMailService {
 
-    public void SendMail(string stock, float price, bool sell);
+    public Task SendMail(string stock, bool sell);
         
 }
