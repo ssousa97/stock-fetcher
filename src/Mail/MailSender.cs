@@ -15,6 +15,7 @@ class MailSender : IMailService {
     private string FromName;
     private string Password;
     private List<User> UserList;
+    private List<string> FailedMails;
 
     private readonly IConfiguration ConfigurationService;
 
@@ -29,21 +30,48 @@ class MailSender : IMailService {
         var emailsConfig = ConfigurationService.GetSection("emails");
 
         SMTPServer     = smtpConfig.GetSection("server").Value;
-        FromMail       = smtpConfig.GetSection("usermail").Value;
-        FromName       = smtpConfig.GetSection("username").Value;
+        FromMail       = smtpConfig.GetSection("frommail").Value;
+        FromName       = smtpConfig.GetSection("fromname").Value;
         Password       = smtpConfig.GetSection("password").Value;
+
         UserList       = emailsConfig.Get<List<User>>();
+        FailedMails    = new List<string>();
 
     }
 
-    public void SendMail(string stock, float price, bool sell) {
+    public async Task SendMail(string stock, bool sell) {
         
-        Console.WriteLine("-> Informando usuários sobre alteração de preço.");
+        Console.WriteLine("-> Informando usuários sobre alteração de preço...");
+
+        int successSents = await CreateAndSendMail(stock, sell);
+    
+        if(successSents == UserList.Count){
+
+            Console.WriteLine("-> Todos os usuários notificados sobre a ultima atualização de preço.");
+
+        } else if (successSents < UserList.Count && successSents > 0){
+
+            Console.WriteLine($"-> Alguns usuários não foram notificados sobre a atualização de preço. Envios sucedidos : {successSents}/{UserList.Count} ");
+            LogFailedMails();
+
+        } else {
+
+            Console.WriteLine("-> Nenhum usuário notificado pela atualização de preço.");
+            LogFailedMails();
+
+        }
+        
+    }
+
+    private async Task<int> CreateAndSendMail(string stock, bool sell){
+        var successSents = 0;
 
         using(var smtpClient = new SmtpClient()){
             
             smtpClient.Connect(SMTPServer, 465, true);
             smtpClient.Authenticate(FromMail, Password);
+
+            FailedMails.Clear();
 
             foreach(var user in UserList){
                 var message = new MimeMessage();
@@ -61,15 +89,35 @@ class MailSender : IMailService {
                     new TextPart("plain") {
                         Text = @$"Sr. {user.Name}, o ativo {stock} atingiu o preço inferior ao limite estabelecido, aconselhamos a compra."
                     };
+                
+                try {
 
-                var ret = smtpClient.Send(message);
+                    await smtpClient.SendAsync(message);
+                    successSents++;
+                    
+                } catch(Exception e){
 
-                Console.WriteLine(ret);
+                    StoreFailedMail(user, e.Message);
+
+                }
             }
-            Console.WriteLine("-> Usuários notificados sobre a ultima atualização de preço.");
             smtpClient.Disconnect(true);
         }
 
+        return successSents;
     }
 
+    private void StoreFailedMail(User user, string returnMsg){
+
+        var returnCode = returnMsg.Split(' ')[0];
+        var failedMsg = $"---> Envio para : {user.Email} falhou. Código de retorno : {returnCode}";
+
+        FailedMails.Add(failedMsg);
+    }
+
+    private void LogFailedMails(){
+        foreach(var log in FailedMails){
+            Console.WriteLine(log);
+        }
+    }
 }
