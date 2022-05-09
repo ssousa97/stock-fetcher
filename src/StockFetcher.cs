@@ -28,8 +28,27 @@ class StockFetcher {
         BuyPrice = buyPrice;
     }
 
-    public void Fetch()
-    {
+    public async Task Run() {
+        
+        var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        var running = true;
+
+        while(await periodicTimer.WaitForNextTickAsync() && running){
+
+            try {
+
+                var lastStockPrice = await FetchStockPrice();
+                SendMail(lastStockPrice);
+            
+            }
+            catch(Exception e){
+                Console.Error.WriteLine(e.Message);
+                running = false;
+
+            }           
+        }
+    
+    }
 
     }
 
