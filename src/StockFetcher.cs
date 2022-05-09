@@ -50,6 +50,28 @@ class StockFetcher {
     
     }
 
+    public async Task<StockPrice> FetchStockPrice() {
+
+        using(var httpClient = new HttpClient()){
+
+            var response = await httpClient.GetAsync($"https://cotacao.b3.com.br/mds/api/v1/DailyFluctuationHistory/{Stock}");
+            
+            if(!response.IsSuccessStatusCode) {
+                throw new Exception($"Erro ao conectar-se com a API. Código : ${response.StatusCode}");
+            }
+
+            var responseJson = JsonArray.Parse(await response.Content.ReadAsStreamAsync());
+            var stockPricesJsonArray = responseJson?["TradgFlr"]?["scty"]?["lstQtn"]?.AsArray();
+            var stockPrices = stockPricesJsonArray.Deserialize<List<StockPrice>>();
+
+            if(stockPrices is null || stockPrices.Count == 0 ){
+                throw new Exception("Nenhum preço de ativo encontrado.");
+            }
+
+            return stockPrices.Last();
+        }
+
+    }
     }
 
 
