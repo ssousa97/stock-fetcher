@@ -1,9 +1,7 @@
-﻿using System.Configuration;
-using System.Globalization;
+﻿using System.Globalization;
 
 class Program {
     static async Task Main(string[] args){
-
         
         try {
 
@@ -22,14 +20,9 @@ class Program {
             if(buyPrice > sellPrice){
                 throw new Exception("Valor de compra maior do que valor de venda.");
             }
-
-            var configs = ConfigurationManager.AppSettings;
-            var stockFetcher = new StockFetcher(stock, sellPrice, buyPrice);
             
-
-            Console.WriteLine("[Stock Fetcher] - Fetching...");
-
-            await stockFetcher.Run();
+            Console.WriteLine("Stock Fetcher iniciado.");
+            await new StockFetcher(stock, sellPrice, buyPrice, new MailSender()).Run();
 
         } catch(Exception e){
             Console.Error.WriteLine(e.Message);
