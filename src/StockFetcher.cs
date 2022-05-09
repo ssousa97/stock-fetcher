@@ -16,13 +16,13 @@ struct StockPrice {
     public string Time {get; set;}
     
 }
-class StockFetcher {
-    private string Stock;
-    private float SellPrice;
-    private float BuyPrice;
 
-    public StockFetcher(string stock, float sellPrice, float buyPrice)
-    {
+class StockFetcher {
+    public string Stock {get; set;}
+    public float SellPrice {get; set;}
+    public float BuyPrice {get; set;}
+
+    public StockFetcher(string stock, float sellPrice, float buyPrice) {
         Stock = stock;
         SellPrice = sellPrice;
         BuyPrice = buyPrice;
@@ -72,6 +72,16 @@ class StockFetcher {
         }
 
     }
+
+    public void SendMail(StockPrice lastStockPrice){
+        if(lastStockPrice.Price > SellPrice) {
+            
+            // mailSender.SendSellEmail();
+        
+        } else if(lastStockPrice.Price < BuyPrice) {
+            
+            // mailSender.SendBuyEmail();
+        }
     }
 
 
