@@ -19,16 +19,13 @@ class StockFetcher {
 
     public async Task Run() {
         
-        var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(5)); 
+        var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(60)); 
         var running = true;
 
         while(await periodicTimer.WaitForNextTickAsync() && running){
             Console.WriteLine("\nBusca de preços iniciada...");
             try {
-
-                var stockPrice = await FetchStockPrice();
-                SendMail(stockPrice);
-            
+                SendMail(await FetchStockPrice());            
             }
             catch(Exception e){
                 Console.Error.WriteLine(e.Message);
@@ -71,11 +68,11 @@ class StockFetcher {
             
             if(stockPrice.Price > SellPrice) {
             
-                MailService.SendMail(Stock, stockPrice.Price, true);
+                MailService.SendMail(Stock, true);
 
             } else if(stockPrice.Price < BuyPrice) {
             
-                MailService.SendMail(Stock, stockPrice.Price, false);
+                MailService.SendMail(Stock, false);
             }
 
         }else {
@@ -83,7 +80,6 @@ class StockFetcher {
             Console.WriteLine("-> Nenhuma atualização recente desde a ultima busca. Nenhum email enviado.");
         
         }
-        
     }
 
 
