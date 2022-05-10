@@ -8,6 +8,12 @@ struct User {
     public string Email {get;set;}
 }
 
+struct MailStatus {
+    public string Code {get; set;}
+    public User User {get; set;}
+    public bool Sent {get; set;}
+}
+
 class MailSender : IMailService {
 
     private string SMTPServer;
