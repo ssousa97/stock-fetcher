@@ -49,7 +49,7 @@ class MailSender : IMailService {
         
         Console.WriteLine("-> Informando usuários sobre alteração de preço...");
 
-        int successSents = await CreateAndSendMail(stock, sell);
+        int successSents = await CreateMessageAndSendMail(stock, sell);
     
         if(successSents == UserList.Count){
 
@@ -58,72 +58,80 @@ class MailSender : IMailService {
         } else if (successSents < UserList.Count && successSents > 0){
 
             Console.WriteLine($"-> Alguns usuários não foram notificados sobre a atualização de preço. Envios sucedidos : {successSents}/{UserList.Count} ");
-            LogFailedMails();
 
         } else {
 
             Console.WriteLine("-> Nenhum usuário notificado pela atualização de preço.");
-            LogFailedMails();
 
         }
         
     }
 
-    private async Task<int> CreateAndSendMail(string stock, bool sell){
-        var successSents = 0;
+    private async Task<int> CreateMessageAndSendMail(string stock, bool sell){
 
-        using(var smtpClient = new SmtpClient()){
+        var messagesToSent = new List<Task<MailStatus>>();
+
+        foreach(var user in UserList){
+
+            var message = new MimeMessage();
             
-            smtpClient.Connect(SMTPServer, 465, true);
-            smtpClient.Authenticate(FromMail, Password);
+            message.From.Add(new MailboxAddress(FromName, FromMail));
+            message.To.Add(new MailboxAddress(user.Name, user.Email));
 
-            FailedMails.Clear();
+            message.Subject = sell ? 
+                $"Sr. {user.Name}, venda seu ativo {stock}" :
+                $"Sr. {user.Name}, compre o ativo {stock}";
+            
+            message.Body = sell ? 
+                new TextPart("plain") {
+                    Text = @$"Sr. {user.Name}, seu ativo {stock} atingiu o preço superior ao limite estabelecido, aconselhamos a venda."
+                } :
+                new TextPart("plain") {
+                    Text = @$"Sr. {user.Name}, o ativo {stock} atingiu o preço inferior ao limite estabelecido, aconselhamos a compra."
+                };
 
-            foreach(var user in UserList){
-                var message = new MimeMessage();
-                message.From.Add(new MailboxAddress(FromName, FromMail));
-                message.To.Add(new MailboxAddress(user.Name, user.Email));
+            messagesToSent.Add(Task.Run(()=> ConnectAndSendMessage(message, user)));
+        }
 
-                message.Subject = sell ? 
-                    $"Sr. {user.Name}, venda seu ativo {stock}" :
-                    $"Sr. {user.Name}, compre o ativo {stock}";
-                
-                message.Body = sell ? 
-                    new TextPart("plain") {
-                        Text = @$"Sr. {user.Name}, seu ativo {stock} atingiu o preço superior ao limite estabelecido, aconselhamos a venda."
-                    } :
-                    new TextPart("plain") {
-                        Text = @$"Sr. {user.Name}, o ativo {stock} atingiu o preço inferior ao limite estabelecido, aconselhamos a compra."
-                    };
-                
-                try {
+        var results = await Task.WhenAll(messagesToSent.ToArray());
+        var failedMessages = results.Where(mailStatus => !mailStatus.Sent);
 
-                    await smtpClient.SendAsync(message);
-                    successSents++;
-                    
-                } catch(Exception e){
+        foreach(var failed in failedMessages){
+            Console.WriteLine($"--> Error ao enviar para {failed.User.Email}. Código de erro do servidor SMTP {SMTPServer} : {failed.Code}");
+        }
 
-                    StoreFailedMail(user, e.Message);
+        var successMessages = messagesToSent.Count() - failedMessages.Count();
 
-                }
+        return successMessages;
+    }
+
+    private MailStatus ConnectAndSendMessage(MimeMessage message, User user){
+        using(var smtpClient = new SmtpClient()){
+
+            try { 
+                smtpClient.Connect(SMTPServer, 465, true);
+                smtpClient.Authenticate(FromMail, Password);
+
+                var response = smtpClient.Send(message);
+
+                smtpClient.Disconnect(true);
+
+                return new MailStatus(){
+                    Code = response.Split(' ')[0],
+                    Sent = true,
+                    User = user
+                };
+
+            }catch(Exception e){
+
+                return new MailStatus(){
+                    Code = e.Message.Split(' ')[0],
+                    Sent = false,
+                    User = user
+                };
+            
             }
-            smtpClient.Disconnect(true);
-        }
-
-        return successSents;
-    }
-
-    private void StoreFailedMail(User user, string returnMsg){
-
-        var returnCode = returnMsg.Split(' ')[0];
-        var failedMsg = $"---> Envio para : {user.Email} falhou. Código de retorno : {returnCode}";
-
-        FailedMails.Add(failedMsg);
-    }
-
-    private void LogFailedMails(){
-        foreach(var log in FailedMails){
-            Console.WriteLine(log);
         }
     }
+
 }
