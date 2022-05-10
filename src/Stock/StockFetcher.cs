@@ -25,7 +25,7 @@ class StockFetcher {
         while(await periodicTimer.WaitForNextTickAsync() && running){
             Console.WriteLine("\nBusca de preços iniciada...");
             try {
-                SendMail(await FetchStockPrice());            
+                await SendMail(await FetchStockPrice());            
             }
             catch(Exception e){
                 Console.Error.WriteLine(e.Message);
@@ -59,7 +59,7 @@ class StockFetcher {
 
     }
 
-    public void SendMail(StockPrice stockPrice){
+    public async Task SendMail(StockPrice stockPrice){
         
         if(stockPrice.Price != LastPrice){
 
@@ -68,11 +68,11 @@ class StockFetcher {
             
             if(stockPrice.Price > SellPrice) {
             
-                MailService.SendMail(Stock, true);
+                await MailService.SendMail(Stock, true);
 
             } else if(stockPrice.Price < BuyPrice) {
             
-                MailService.SendMail(Stock, false);
+                await MailService.SendMail(Stock, false);
             }
 
         }else {
